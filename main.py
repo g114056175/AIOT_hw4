@@ -147,15 +147,8 @@ if user_question := st.chat_input("Ask a question..."):
                     request_timeout=120
                 )
                 
-                # Construct chat history, including the current question
-                chat_history = [SystemMessage(content="You are a helpful assistant. Please respond in Traditional Chinese.")]
-                for message in st.session_state.conversation:
-                    if message["role"] == "user":
-                        chat_history.append(HumanMessage(content=message["content"]))
-                    else: # assistant
-                        chat_history.append(AIMessage(content=message["content"]))
-
-                response_obj = llm.invoke(chat_history)
+                # Send only the current question to the LLM, with Traditional Chinese instruction
+                response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
                 response = response_obj.content
             except Exception as e:
                 response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
@@ -165,23 +158,14 @@ if user_question := st.chat_input("Ask a question..."):
         st.session_state.conversation.append({"role": "assistant", "content": response})
 
     else:
-        # Use RAG to generate an answer with conversational memory
+        # Use RAG to generate an answer (stateless)
         with st.spinner("Thinking with RAG..."):
             try:
-                # Construct chat history *before* the current question for the RAG chain
-                chat_history = []
-                for message in st.session_state.conversation[:-1]:
-                    if message["role"] == "user":
-                        chat_history.append(HumanMessage(content=message["content"]))
-                    else: # assistant
-                        chat_history.append(AIMessage(content=message["content"]))
-                
-                # Call the synchronous helper function with the original question and history
+                # Call the helper function with the original question
                 response = helpers.generate_answer(
                     user_question,
                     selected_stores_for_query,
-                    google_api_key,
-                    chat_history
+                    google_api_key
                 )
             except Exception as e:
                 response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"

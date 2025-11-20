@@ -3,11 +3,9 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain.chains.question_answering import load_qa_chain # Reverted import
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
+from langchain.prompts import PromptTemplate # Reverted import
 import io # Added import for io
 
 def process_text_from_pdfs(pdf_docs):
@@ -61,15 +59,14 @@ def create_vector_store(text_chunks):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
-def generate_answer(user_question, vector_stores, api_key, chat_history):
+def generate_answer(user_question, vector_stores, api_key): # Removed chat_history
     """
-    Generates an answer based on the user's question, selected vector stores, and chat history.
+    Generates an answer based on the user's question and selected vector stores.
     This is a synchronous function.
     Args:
         user_question (str): The user's question.
         vector_stores (dict): A dictionary of available vector stores.
         api_key (str): The Google Gemini API key.
-        chat_history (list): A list of AIMessage and HumanMessage objects.
     Returns:
         str: The generated answer.
     """
@@ -85,61 +82,30 @@ def generate_answer(user_question, vector_stores, api_key, chat_history):
         request_timeout=60
     )
 
-    # --- Combine all selected vector stores into a single retriever ---
-    if not vector_stores:
-        return "No RAG source selected."
+    # --- Retrieve relevant documents from all selected vector stores ---
+    all_docs = []
+    for store in vector_stores.values():
+        all_docs.extend(store.similarity_search(user_question)) # Use user_question directly
 
-    # Take the first selected store as the base for merging
-    base_store_key = list(vector_stores.keys())[0]
-    base_store = vector_stores[base_store_key]
+    if not all_docs:
+        return "No relevant information found in the selected documents for your question."
 
-    # Merge other selected stores into the base store
-    for key, store in vector_stores.items():
-        if key != base_store_key:
-            base_store.merge_from(store)
-    
-    retriever = base_store.as_retriever()
-
-    # Create a memory object to hold the conversation history
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    for msg in chat_history:
-        if isinstance(msg, HumanMessage):
-            memory.chat_memory.add_user_message(msg.content)
-        else:
-            memory.chat_memory.add_ai_message(msg.content)
-
-    # Define the prompt for the final document combination step
-    qa_prompt_template = """
-    Use the following pieces of context to answer the user's question. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    # A more basic and versatile prompt template, asking for Traditional Chinese
+    prompt_template = """
+    Answer the user's question based ONLY on the following context. If the answer is not found in the context, state that you cannot find the answer in the provided documents.
     Please respond in Traditional Chinese.
 
-    Context: {context}
-    Question: {question}
-    Helpful Answer:"""
-    QA_PROMPT = PromptTemplate(
-        template=qa_prompt_template, input_variables=["context", "question"]
-    )
+    Context:
+    {context}
 
-    # Define the prompt for condensing the question (for conversational chain)
-    condense_question_prompt_template = """
-    Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
-    Chat History:
-    {chat_history}
-    Follow Up Input: {question}
-    Standalone question:"""
-    CONDENSE_QUESTION_PROMPT = PromptTemplate(
-        template=condense_question_prompt_template, input_variables=["chat_history", "question"]
-    )
+    Question:
+    {question}
 
-    # Create the conversational chain
-    conversation_chain = ConversationalRetrievalChain.from_llm(
-        llm=model,
-        retriever=retriever,
-        memory=memory,
-        condense_question_prompt=CONDENSE_QUESTION_PROMPT,
-        combine_docs_chain_kwargs={"prompt": QA_PROMPT}
-    )
-    
-    # Invoke the chain
-    response = conversation_chain({'question': user_question})
-    return response['answer']
+    Answer:
+    """
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+
+    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt) # Reverted to stuff chain
+
+    response = chain.run(input_documents=all_docs, question=user_question) # Use chain.run
+    return response
