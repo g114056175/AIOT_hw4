@@ -48,7 +48,7 @@ This comparison clearly illustrates how RAG grounds the model in factual, domain
 
 ## References
 
--   **Instructional Video**: [【李宏毅】生成式AI導論(2024)](https://www.youtube.com/watch?v=jF80Y8_BvEA&list=PL-eaXJVCzwbsXqWvQncPuuCg3wASAWWfO&index=7)
+-   **Instructional Video**: [檢索增強生成(RAG)的原理及實作](https://www.youtube.com/watch?v=jF80Y8_BvEA&list=PL-eaXJVCzwbsXqWvQncPuuCg3wASAWWfO&index=7)
 -   **RAG Implementation Reference**: [【Demo06a】RAG01_打造向量資料庫.ipynb](https://github.com/yenlung/AI-Demo/blob/master/%E3%80%90Demo06a%E3%80%91RAG01_%E6%89%93%E9%80%A0%E5%90%91%E9%87%8F%E8%B3%87%E6%96%99%E5%BA%AB.ipynb)
 
 ## Local Setup
