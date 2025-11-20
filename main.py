@@ -24,7 +24,7 @@ if "vector_stores" not in st.session_state:
 
 # --- Load Default RAG Indexes on Startup ---
 DEFAULT_RAG_ROOT = "./RAG_file"
-if "default_loaded" not not in st.session_state: # Corrected: should be 'not in'
+if "default_loaded" not in st.session_state:
     if os.path.exists(DEFAULT_RAG_ROOT) and os.path.isdir(DEFAULT_RAG_ROOT):
         try:
             with st.spinner("Loading default RAG sources..."):
