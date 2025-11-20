@@ -31,8 +31,10 @@ You can interact with the application deployed on Streamlit Cloud via the follow
 [https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/](https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/)
 
 ### DEMO1: `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
+![DEMO1 Screenshot](DEMO1.png)
 
 ### DEMO2: `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
+![DEMO2 Screenshot](DEMO2.png)
 
 ## References
 
