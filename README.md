@@ -30,6 +30,22 @@ You can interact with the application deployed on Streamlit Cloud via the follow
 
 [https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/](https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/)
 
+### Example Usage: Demonstrating the Power of RAG
+
+To see the difference RAG makes, try the following comparison. The default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` should be loaded automatically.
+
+1.  **Without RAG**:
+    -   In the sidebar, **uncheck** the box for `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)`.
+    -   Ask the question: `What does Article 5 of the NCHU Student Rewards and Punishments Regulations state?`
+    -   **Expected Result**: The model has no specific knowledge of this document. It will likely apologize for not knowing the answer or provide a generic, made-up response (a "hallucination").
+
+2.  **With RAG**:
+    -   In the sidebar, **check** the box for `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)`.
+    -   Ask the same question: `What does Article 5 of the NCHU Student Rewards and Punishments Regulations state?`
+    -   **Expected Result**: The model will now use the document as context and provide a precise answer based on the content of Article 5.
+
+This comparison clearly illustrates how RAG grounds the model in factual, domain-specific knowledge, leading to more accurate and reliable answers.
+
 ## References
 
 -   **Instructional Video**: [【李宏毅】生成式AI導論(2024)](https://www.youtube.com/watch?v=jF80Y8_BvEA&list=PL-eaXJVCzwbsXqWvQncPuuCg3wASAWWfO&index=7)
