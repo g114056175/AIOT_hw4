@@ -1,10 +1,18 @@
 import streamlit as st
+import nest_asyncio
+
+# Apply the patch for asyncio right at the start
+nest_asyncio.apply()
+
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
-
-# Apply the patch for asyncio to allow nested event loops
-nest_asyncio.apply()
+import asyncio
+import os
+import shutil
+from langchain.vectorstores import FAISS
+import io
+import zipfile
 
 # --- App Configuration ---
 st.set_page_config(page_title="RAG Q&A with Gemini", layout="wide")
