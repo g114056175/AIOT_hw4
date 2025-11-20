@@ -1,5 +1,7 @@
 streamlit
 langchain
+langchain-core
+langchain-community
 google-generativeai
 pypdf
 faiss-cpu
