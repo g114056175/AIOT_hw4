@@ -1,6 +1,10 @@
 import streamlit as st
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
+import nest_asyncio
+
+# Apply the patch for asyncio
+nest_asyncio.apply()
 
 # --- App Configuration ---
 st.set_page_config(page_title="RAG Q&A with Gemini", layout="wide")
