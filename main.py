@@ -1,13 +1,7 @@
 import streamlit as st
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
-import nest_asyncio
-import asyncio
-import os
-import shutil
-from langchain.vectorstores import FAISS
-import io
-import zipfile
+from langchain_core.messages import HumanMessage, AIMessage
 
 # Apply the patch for asyncio to allow nested event loops
 nest_asyncio.apply()
@@ -132,6 +126,9 @@ if user_question := st.chat_input("Ask a question..."):
     with st.chat_message("user"):
         st.markdown(user_question)
 
+    # Centralize the instruction for Traditional Chinese response
+    prompted_question = f"{user_question}\n\nPlease respond in Traditional Chinese."
+
     # Determine which vector stores are selected for the query
     selected_stores_for_query = {
         name: store for name, store in st.session_state.vector_stores.items()
@@ -144,7 +141,6 @@ if user_question := st.chat_input("Ask a question..."):
         st.info("No RAG source selected. Answering from general knowledge...")
         with st.spinner("Thinking..."):
             try:
-                # Use a direct synchronous call which is more stable in Streamlit
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-2.0-flash-lite",
                     temperature=0.7,
@@ -152,9 +148,18 @@ if user_question := st.chat_input("Ask a question..."):
                     convert_system_message_to_human=True,
                     request_timeout=120
                 )
-                # Add instruction for Traditional Chinese response
-                prompted_question = f"{user_question}\n\nPlease respond in Traditional Chinese."
-                response_obj = llm.invoke(prompted_question)
+                
+                # Construct chat history, including the current question
+                chat_history = []
+                for message in st.session_state.conversation:
+                    if message["role"] == "user":
+                        # Use the prompted question for the last user message
+                        content = prompted_question if message["content"] == user_question else message["content"]
+                        chat_history.append(HumanMessage(content=content))
+                    else: # assistant
+                        chat_history.append(AIMessage(content=message["content"]))
+
+                response_obj = llm.invoke(chat_history)
                 response = response_obj.content
             except Exception as e:
                 response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
@@ -164,14 +169,28 @@ if user_question := st.chat_input("Ask a question..."):
         st.session_state.conversation.append({"role": "assistant", "content": response})
 
     else:
-        # Use RAG to generate an answer
+        # Use RAG to generate an answer with conversational memory
         with st.spinner("Thinking with RAG..."):
             try:
-                # Pass the selected vector stores to the helper function
-                response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, google_api_key))
+                # Construct chat history *before* the current question for the RAG chain
+                chat_history = []
+                for message in st.session_state.conversation[:-1]:
+                    if message["role"] == "user":
+                        chat_history.append(HumanMessage(content=message["content"]))
+                    else: # assistant
+                        chat_history.append(AIMessage(content=message["content"]))
+                
+                # Call the synchronous helper function with the prompted question and history
+                response = helpers.generate_answer(
+                    prompted_question,
+                    selected_stores_for_query,
+                    google_api_key,
+                    chat_history
+                )
             except Exception as e:
                 response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
         
         with st.chat_message("assistant"):
             st.markdown(response)
         st.session_state.conversation.append({"role": "assistant", "content": response})
+

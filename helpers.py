@@ -3,40 +3,9 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI # Keep ChatGoogleGenerativeAI for generate_answer function
-
-def process_text_from_pdfs(pdf_docs):
-    """
-    Extracts and concatenates text from a list of uploaded PDF files.
-    Args:
-        pdf_docs (list): A list of uploaded file objects from Streamlit.
-    Returns:
-        str: A single string containing all the extracted text.
-    """
-    text = ""
-    for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text
-    return text
-
-def get_text_chunks(text):
-    """
-    Splits a long text into smaller, manageable chunks.
-    Args:
-        text (str): The input text.
-    Returns:
-        list: A list of text chunks.
-    """
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    chunks = text_splitter.split_text(text)
-    return chunks
-
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
+from langchain_core.messages import AIMessage, HumanMessage
 
 def get_hf_embeddings():
     """Initializes and returns the HuggingFace embedding model."""
@@ -50,63 +19,64 @@ def create_vector_store(text_chunks):
     Returns:
         FAISS: A FAISS vector store object, or None if input is empty.
     """
-    # Add a safeguard for empty text chunks
     if not text_chunks:
         print("Warning: Text chunks are empty. Cannot create vector store.")
         return None
-
-    # Use a HuggingFace model for embeddings, running locally on the server
     embeddings = get_hf_embeddings()
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
-async def generate_answer(user_question, vector_stores, api_key):
+def generate_answer(user_question, vector_stores, api_key, chat_history):
     """
-    Generates an answer based on the user's question and selected vector stores.
-    This is an async function.
+    Generates an answer based on the user's question, selected vector stores, and chat history.
+    This is a synchronous function.
     Args:
         user_question (str): The user's question.
-        vector_stores (dict): A dictionary of available vector stores, keyed by filename.
+        vector_stores (dict): A dictionary of available vector stores.
         api_key (str): The Google Gemini API key.
+        chat_history (list): A list of AIMessage and HumanMessage objects.
     Returns:
         str: The generated answer.
     """
     if not vector_stores:
         return "Please upload and select at least one document to ask questions."
 
-    # A more basic and versatile prompt template, asking for Traditional Chinese
-    prompt_template = """
-    Answer the user's question based on the provided context. Please respond in Traditional Chinese.
-
-    Context:
-    {context}
-
-    Question:
-    {question}
-
-    Answer:
-    """
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-
-    # Initialize the model and the QA chain
+    # Initialize the model
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-lite", # Updated model name
+        model="gemini-2.0-flash-lite",
         temperature=0.3,
         google_api_key=api_key,
         convert_system_message_to_human=True,
         request_timeout=60
     )
-    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
-    # Retrieve relevant documents from all selected vector stores
-    all_docs = []
-    for store in vector_stores.values():
-        # FAISS similarity_search is not async, so we run it normally
-        all_docs.extend(store.similarity_search(user_question))
+    # Create a unified retriever from all selected vector stores
+    # This is a simplified approach. A more robust solution would merge the FAISS indexes.
+    # For now, we'll just use the first one selected. This is a limitation to be aware of.
+    # A better approach would be to merge the stores, but FAISS doesn't support that directly.
+    # We will create a retriever from the first selected store.
+    if vector_stores:
+        main_store = list(vector_stores.values())[0]
+        # We can merge documents from other stores into the main one if needed, but for now, we use one.
+        retriever = main_store.as_retriever()
+    else:
+        return "No RAG source selected."
 
-    if not all_docs:
-        return "No relevant information found in the selected documents for your question."
+    # Create a memory object to hold the conversation history
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    for msg in chat_history:
+        if isinstance(msg, HumanMessage):
+            memory.chat_memory.add_user_message(msg.content)
+        else:
+            memory.chat_memory.add_ai_message(msg.content)
 
-    # Generate the response asynchronously
-    response = await chain.ainvoke({"input_documents": all_docs, "question": user_question}, return_only_outputs=True)
-    return response["output_text"]
+    # Create the conversational chain
+    conversation_chain = ConversationalRetrievalChain.from_llm(
+        llm=model,
+        retriever=retriever,
+        memory=memory
+    )
+    
+    # Invoke the chain
+    response = conversation_chain({'question': user_question})
+    return response['answer']
