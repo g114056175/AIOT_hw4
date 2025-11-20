@@ -5,6 +5,7 @@ import nest_asyncio
 import asyncio
 import os
 import shutil
+from langchain.vectorstores import FAISS
 
 # Apply the patch for asyncio
 nest_asyncio.apply()
@@ -20,6 +21,22 @@ if "vector_stores" not in st.session_state:
     st.session_state.vector_stores = {}
 if "chat_mode" not in st.session_state:
     st.session_state.chat_mode = "RAG Mode" # Default mode
+
+# --- Load Default RAG Index on Startup ---
+DEFAULT_INDEX_PATH = "./default_nchu_index"
+DEFAULT_RAG_NAME = "NCHU Student Regulations (Default)"
+
+if "default_loaded" not in st.session_state:
+    if os.path.exists(DEFAULT_INDEX_PATH):
+        try:
+            with st.spinner("Loading default RAG source..."):
+                embeddings = helpers.get_hf_embeddings()
+                default_vs = FAISS.load_local(DEFAULT_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
+                st.session_state.vector_stores[DEFAULT_RAG_NAME] = default_vs
+            st.toast("Default RAG source loaded successfully!")
+        except Exception as e:
+            st.error(f"Failed to load default RAG source: {e}")
+    st.session_state.default_loaded = True # Ensure this runs only once
 
 # --- Sidebar for Controls ---
 with st.sidebar:
@@ -86,14 +103,14 @@ with st.sidebar:
                                 with open(zip_path, "rb") as f:
                                     zip_bytes = f.read()
                                 
-                                st.download_button(
-                                    label="Download",
-                                    data=zip_bytes,
-                                    file_name=f"{filename}_faiss_index.zip",
-                                    mime="application/zip",
-                                    key=f"dl_{filename}"
-                                )
-                                
+                                                    st.download_button(
+                                                        label="⬇️",
+                                                        data=zip_bytes,
+                                                        file_name=f"{filename}_faiss_index.zip",
+                                                        mime="application/zip",
+                                                        key=f"dl_{filename}",
+                                                        help=f"Download RAG data for {filename}" # Add tooltip
+                                                    )                                
                                 # Clean up temporary files
                                 shutil.rmtree(save_path)
                                 os.remove(zip_path)

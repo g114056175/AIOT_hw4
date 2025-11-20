@@ -36,6 +36,12 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
+from langchain.embeddings import HuggingFaceEmbeddings
+
+def get_hf_embeddings():
+    """Initializes and returns the HuggingFace embedding model."""
+    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
 def create_vector_store(text_chunks):
     """
     Creates and returns a FAISS vector store from text chunks using a HuggingFace model.
@@ -49,8 +55,8 @@ def create_vector_store(text_chunks):
         print("Warning: Text chunks are empty. Cannot create vector store.")
         return None
 
-    # Use a lightweight HuggingFace model for embeddings to avoid resource issues on Streamlit Cloud
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    # Use a HuggingFace model for embeddings, running locally on the server
+    embeddings = get_hf_embeddings()
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
