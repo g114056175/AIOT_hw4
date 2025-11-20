@@ -3,6 +3,8 @@ import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
 import nest_asyncio
 import asyncio
+import os
+import shutil
 
 # Apply the patch for asyncio
 nest_asyncio.apply()
@@ -57,13 +59,54 @@ with st.sidebar:
         if not st.session_state.vector_stores:
             st.info("Upload documents to see available RAG sources.")
         else:
-            # Use a dictionary to track the state of checkboxes
-            selected_sources_dict = {}
-            for filename in st.session_state.vector_stores.keys():
-                selected_sources_dict[filename] = st.checkbox(filename, value=True, key=f"cb_{filename}")
-            st.session_state.selected_sources_dict = selected_sources_dict # Store in session state
-
-# --- Main Chat Interface ---
+                    # Use a dictionary to track the state of checkboxes
+                    selected_sources_dict = {}
+                    # Create a temporary directory for downloads if it doesn't exist
+                    TEMP_DIR = "./temp_download"
+                    if not os.path.exists(TEMP_DIR):
+                        os.makedirs(TEMP_DIR)
+            
+                    for filename in st.session_state.vector_stores.keys():
+                        col1, col2 = st.columns([0.7, 0.3])
+                        with col1:
+                            selected_sources_dict[filename] = st.checkbox(filename, value=True, key=f"cb_{filename}")
+                        with col2:
+                            try:
+                                # --- Download Button Logic ---
+                                vector_store = st.session_state.vector_stores[filename]
+                                save_path = os.path.join(TEMP_DIR, filename + "_faiss_index")
+                                
+                                # Save the index to a temporary folder
+                                vector_store.save_local(save_path)
+                                
+                                # Create a zip file from the folder
+                                zip_path = shutil.make_archive(save_path, 'zip', save_path)
+                                
+                                # Read the zip file into memory
+                                with open(zip_path, "rb") as f:
+                                    zip_bytes = f.read()
+                                
+                                st.download_button(
+                                    label="Download",
+                                    data=zip_bytes,
+                                    file_name=f"{filename}_faiss_index.zip",
+                                    mime="application/zip",
+                                    key=f"dl_{filename}"
+                                )
+                                
+                                # Clean up temporary files
+                                shutil.rmtree(save_path)
+                                os.remove(zip_path)
+            
+                            except Exception as e:
+                                st.error(f"Failed to create download for {filename}: {e}")
+            
+                    st.session_state.selected_sources_dict = selected_sources_dict # Store in session state
+                    
+                    # Clean up the main temp directory if it's empty
+                    if os.path.exists(TEMP_DIR) and not os.listdir(TEMP_DIR):
+                        shutil.rmtree(TEMP_DIR)
+            # --- Main Chat Interface ---
 
 # Display chat messages
 for message in st.session_state.conversation:
@@ -116,10 +159,30 @@ if user_question := st.chat_input("Ask a question..."):
                 }
 
                 if not selected_stores_for_query:
-                    st.warning("Please select at least one RAG source from the sidebar.")
-                else:
-                    # Generate and display AI response
+                    st.info("No RAG source selected. Answering from general knowledge to demonstrate hallucination/errors.")
                     with st.spinner("Thinking..."):
+                        try:
+                            # Define an async function to call the LLM directly
+                            async def get_llm_response(question):
+                                llm = ChatGoogleGenerativeAI(
+                                    model="gemini-2.5-flash",
+                                    temperature=0.7,
+                                    google_api_key=gemini_api_key,
+                                    convert_system_message_to_human=True,
+                                    request_timeout=60
+                                )
+                                response_obj = await llm.ainvoke(question)
+                                return response_obj.content
+                            # Run the async function
+                            response = asyncio.run(get_llm_response(user_question))
+                        except Exception as e:
+                            response = f"An error occurred: {type(e).__name__} - {e}"
+                    with st.chat_message("assistant"):
+                        st.markdown(response)
+                    st.session_state.conversation.append({"role": "assistant", "content": response})
+                else:
+                    # Generate and display AI response using RAG
+                    with st.spinner("Thinking with RAG..."):
                         try:
                             # Run the async RAG function
                             response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, gemini_api_key))
