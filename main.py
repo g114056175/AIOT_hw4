@@ -22,8 +22,8 @@ if "chat_mode" not in st.session_state:
 with st.sidebar:
     st.header("Controls")
 
-    # API Key Input
-    gemini_api_key = st.text_input("Gemini API Key", type="password", help="Get your key from https://aistudio.google.com/app/apikey")
+    # API Key Hardcoded as per user's request
+    gemini_api_key = "AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU"
 
     # Mode Selection
     st.session_state.chat_mode = st.radio(
