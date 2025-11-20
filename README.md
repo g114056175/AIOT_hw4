@@ -30,21 +30,21 @@ You can interact with the application deployed on Streamlit Cloud via the follow
 
 [https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/](https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/)
 
-### Example Usage: Demonstrating the Power of RAG
+### Example Usage: Demonstrating RAG's Capabilities
 
-To see the difference RAG makes, try the following comparison. The default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` should be loaded automatically.
+Here are a few examples to illustrate how the RAG system works with different types of queries and data.
 
-1.  **Without RAG**:
-    -   In the sidebar, **uncheck** the box for `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)`.
-    -   Ask the question: `What does Article 5 of the NCHU Student Rewards and Punishments Regulations state?`
-    -   **Expected Result**: The model has no specific knowledge of this document. It will likely apologize for not knowing the answer or provide a generic, made-up response (a "hallucination").
+1.  **Querying a Specific Document (Default RAG Source)**:
+    -   Ensure the default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` is loaded and checked in the sidebar.
+    -   Ask the question: `Explain, according to Article 3 of the NCHU Student Rewards and Punishments Regulations, what are the behaviors for which students are given commendations?`
+    -   **Demonstrates**: How RAG can precisely answer questions by retrieving information from a specific, pre-loaded document.
 
-2.  **With RAG**:
-    -   In the sidebar, **check** the box for `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)`.
-    -   Ask the same question: `What does Article 5 of the NCHU Student Rewards and Punishments Regulations state?`
-    -   **Expected Result**: The model will now use the document as context and provide a precise answer based on the content of Article 5.
+2.  **Querying General Knowledge (User-Uploaded RAG Source)**:
+    -   First, upload a PDF document containing information about "Mitral Valve Prolapse" (e.g., a medical article or textbook chapter) and ensure its checkbox is selected in the sidebar.
+    -   Ask the question: `Based on RAG data, fully explain what are the symptoms of Mitral Valve Prolapse?`
+    -   **Demonstrates**: How RAG can be used with user-provided, domain-specific documents to answer questions that might not be covered by the LLM's general training data or require up-to-date information.
 
-This comparison clearly illustrates how RAG grounds the model in factual, domain-specific knowledge, leading to more accurate and reliable answers.
+These examples highlight RAG's ability to provide accurate, context-aware answers from both pre-loaded and dynamically uploaded knowledge sources.
 
 ## References
 
