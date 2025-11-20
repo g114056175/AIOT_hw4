@@ -146,7 +146,7 @@ if user_question := st.chat_input("Ask a question..."):
             try:
                 # Use a direct synchronous call which is more stable in Streamlit
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash-image",
+                    model="gemini-2.5-flash",
                     temperature=0.7,
                     google_api_key=google_api_key,
                     convert_system_message_to_human=True,
