@@ -6,6 +6,8 @@ import asyncio
 import os
 import shutil
 from langchain.vectorstores import FAISS
+import io
+import zipfile
 
 # Apply the patch for asyncio
 nest_asyncio.apply()
@@ -19,193 +21,127 @@ if "conversation" not in st.session_state:
     st.session_state.conversation = []
 if "vector_stores" not in st.session_state:
     st.session_state.vector_stores = {}
-if "chat_mode" not in st.session_state:
-    st.session_state.chat_mode = "RAG Mode" # Default mode
 
-# --- Load Default RAG Index on Startup ---
-DEFAULT_INDEX_PATH = "./default_nchu_index"
-DEFAULT_RAG_NAME = "NCHU Student Regulations (Default)"
-
-if "default_loaded" not in st.session_state:
-    if os.path.exists(DEFAULT_INDEX_PATH):
+# --- Load Default RAG Indexes on Startup ---
+DEFAULT_RAG_ROOT = "./RAG_file"
+if "default_loaded" not not in st.session_state: # Corrected: should be 'not in'
+    if os.path.exists(DEFAULT_RAG_ROOT) and os.path.isdir(DEFAULT_RAG_ROOT):
         try:
-            with st.spinner("Loading default RAG source..."):
+            with st.spinner("Loading default RAG sources..."):
                 embeddings = helpers.get_hf_embeddings()
-                default_vs = FAISS.load_local(DEFAULT_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
-                st.session_state.vector_stores[DEFAULT_RAG_NAME] = default_vs
-            st.toast("Default RAG source loaded successfully!")
+                for item in os.listdir(DEFAULT_RAG_ROOT):
+                    item_path = os.path.join(DEFAULT_RAG_ROOT, item)
+                    if os.path.isdir(item_path) and f"{item} (Default)" not in st.session_state.vector_stores:
+                        default_vs = FAISS.load_local(item_path, embeddings, allow_dangerous_deserialization=True)
+                        st.session_state.vector_stores[f"{item} (Default)"] = default_vs
+            if st.session_state.vector_stores:
+                st.toast("Default RAG sources loaded successfully!")
         except Exception as e:
-            st.error(f"Failed to load default RAG source: {e}")
-    st.session_state.default_loaded = True # Ensure this runs only once
+            st.error(f"Failed to load default RAG sources: {e}")
+    st.session_state.default_loaded = True
 
 # --- Sidebar for Controls ---
 with st.sidebar:
-    st.header("Controls")
+    st.header("RAG Document Management")
+    
+    uploaded_files = st.file_uploader("Upload new PDF documents", type="pdf", accept_multiple_files=True)
 
-    # API Key Hardcoded as per user's request
-    gemini_api_key = "AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU"
+    if uploaded_files:
+        with st.spinner("Processing documents..."):
+            for uploaded_file in uploaded_files:
+                if uploaded_file.name not in st.session_state.vector_stores:
+                    raw_text = helpers.process_text_from_pdfs([uploaded_file])
+                    text_chunks = helpers.get_text_chunks(raw_text)
+                    vector_store = helpers.create_vector_store(text_chunks)
+                    if vector_store:
+                        st.session_state.vector_stores[uploaded_file.name] = vector_store
+                        st.success(f"Processed and indexed: {uploaded_file.name}")
+                    else:
+                        st.warning(f"Could not process text from: {uploaded_file.name}")
 
-    # Mode Selection
-    st.session_state.chat_mode = st.radio(
-        "Select Chat Mode",
-        ("RAG Mode", "Direct LLM Chat Mode"),
-        index=0 if st.session_state.chat_mode == "RAG Mode" else 1
-    )
-
-    if st.session_state.chat_mode == "RAG Mode":
-        st.subheader("RAG Document Management")
-        # File Uploader
-        uploaded_files = st.file_uploader("Upload your PDF documents", type="pdf", accept_multiple_files=True)
-
-        # Process and Store Vector Stores
-        if uploaded_files and gemini_api_key:
-            with st.spinner("Processing documents..."):
-                for uploaded_file in uploaded_files:
-                    # Only process new files
-                    if uploaded_file.name not in st.session_state.vector_stores:
-                        raw_text = helpers.process_text_from_pdfs([uploaded_file])
-                        text_chunks = helpers.get_text_chunks(raw_text)
-                        vector_store = helpers.create_vector_store(text_chunks)
-                        if vector_store:
-                            st.session_state.vector_stores[uploaded_file.name] = vector_store
-                            st.success(f"Processed and indexed: {uploaded_file.name}")
-                        else:
-                            st.warning(f"Could not process text from: {uploaded_file.name}")
-
-        st.subheader("Select RAG Sources")
-        if not st.session_state.vector_stores:
-            st.info("Upload documents to see available RAG sources.")
-        else:
-                    # Use a dictionary to track the state of checkboxes
-                    selected_sources_dict = {}
-                    # Create a temporary directory for downloads if it doesn't exist
+    st.subheader("Select RAG Sources")
+    if not st.session_state.vector_stores:
+        st.info("Upload a document or add a default RAG folder to begin.")
+    else:
+        selected_sources_dict = {}
+        for filename, vector_store in st.session_state.vector_stores.items():
+            selected_sources_dict[filename] = st.checkbox(filename, value=True, key=f"cb_{filename}")
+            
+            # --- Stable Two-Step Download Logic ---
+            zip_key = f"zip_bytes_{filename}"
+            
+            if st.button(f"Prepare Download for {filename}", key=f"prep_{filename}"):
+                with st.spinner(f"Zipping {filename}..."):
                     TEMP_DIR = "./temp_download"
-                    if not os.path.exists(TEMP_DIR):
-                        os.makedirs(TEMP_DIR)
-            
-                    for filename in st.session_state.vector_stores.keys():
-                        col1, col2 = st.columns([0.7, 0.3])
-                        with col1:
-                            selected_sources_dict[filename] = st.checkbox(filename, value=True, key=f"cb_{filename}")
-                        with col2:
-                            try:
-                                # --- Download Button Logic ---
-                                vector_store = st.session_state.vector_stores[filename]
-                                save_path = os.path.join(TEMP_DIR, filename + "_faiss_index")
-                                
-                                # Save the index to a temporary folder
-                                vector_store.save_local(save_path)
-                                
-                                # Create a zip file from the folder
-                                zip_path = shutil.make_archive(save_path, 'zip', save_path)
-                                
-                                # Read the zip file into memory
-                                with open(zip_path, "rb") as f:
-                                    zip_bytes = f.read()
-                                
-                                                    st.download_button(
-                                                        label="⬇️",
-                                                        data=zip_bytes,
-                                                        file_name=f"{filename}_faiss_index.zip",
-                                                        mime="application/zip",
-                                                        key=f"dl_{filename}",
-                                                        help=f"Download RAG data for {filename}" # Add tooltip
-                                                    )                                
-                                # Clean up temporary files
-                                shutil.rmtree(save_path)
-                                os.remove(zip_path)
-            
-                            except Exception as e:
-                                st.error(f"Failed to create download for {filename}: {e}")
-            
-                    st.session_state.selected_sources_dict = selected_sources_dict # Store in session state
+                    save_path = os.path.join(TEMP_DIR, filename.replace(" ", "_") + "_faiss_index")
                     
-                    # Clean up the main temp directory if it's empty
-                    if os.path.exists(TEMP_DIR) and not os.listdir(TEMP_DIR):
-                        shutil.rmtree(TEMP_DIR)
-            # --- Main Chat Interface ---
+                    if os.path.exists(save_path):
+                        shutil.rmtree(save_path)
+                    
+                    vector_store.save_local(save_path)
+                    
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                        for root, _, files in os.walk(save_path):
+                            for file in files:
+                                zip_file.write(os.path.join(root, file), 
+                                               os.path.relpath(os.path.join(root, file), save_path))
+                    
+                    st.session_state[zip_key] = zip_buffer.getvalue()
+                    shutil.rmtree(TEMP_DIR) # Clean up after zipping
+                    st.success(f"{filename} is ready for download.")
 
-# Display chat messages
+            if zip_key in st.session_state:
+                st.download_button(
+                    label=f"⬇️ Download {filename}",
+                    data=st.session_state[zip_key],
+                    file_name=f"{filename}_faiss_index.zip",
+                    mime="application/zip",
+                    key=f"dl_{filename}"
+                )
+        st.session_state.selected_sources_dict = selected_sources_dict
+
+# --- Main Chat Interface ---
 for message in st.session_state.conversation:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat input
 if user_question := st.chat_input("Ask a question..."):
-    # Add user message to chat history
     st.session_state.conversation.append({"role": "user", "content": user_question})
     with st.chat_message("user"):
         st.markdown(user_question)
 
-    # Check for prerequisites
-    if not gemini_api_key:
-        st.warning("Please enter your Gemini API Key in the sidebar.")
+    selected_stores_for_query = {
+        name: store for name, store in st.session_state.vector_stores.items()
+        if st.session_state.get("selected_sources_dict", {}).get(name, False)
+    }
+
+    if not selected_stores_for_query:
+        st.info("No RAG source selected. Answering from general knowledge...")
+        with st.spinner("Thinking..."):
+            try:
+                async def get_llm_response(question):
+                    llm = ChatGoogleGenerativeAI(
+                        model="gemini-2.5-flash",
+                        temperature=0.7,
+                        google_api_key="AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU",
+                        convert_system_message_to_human=True,
+                        request_timeout=60
+                    )
+                    response_obj = await llm.ainvoke(question)
+                    return response_obj.content
+                response = asyncio.run(get_llm_response(user_question))
+            except Exception as e:
+                response = f"An error occurred: {type(e).__name__} - {e}"
+        with st.chat_message("assistant"):
+            st.markdown(response)
+        st.session_state.conversation.append({"role": "assistant", "content": response})
     else:
-        if st.session_state.chat_mode == "Direct LLM Chat Mode":
-            with st.spinner("Thinking..."):
-                try:
-                    # Define an async function to call the LLM
-                    async def get_llm_response(question):
-                        llm = ChatGoogleGenerativeAI(
-                        model="gemini-2.5-flash", # Updated model name as per user's correction
-                            temperature=0.7,
-                            google_api_key=gemini_api_key,
-                            convert_system_message_to_human=True,
-                            request_timeout=60
-                        )
-                        response_obj = await llm.ainvoke(question)
-                        return response_obj.content
-
-                    # Run the async function
-                    response = asyncio.run(get_llm_response(user_question))
-
-                except Exception as e:
-                    response = f"An error occurred: {type(e).__name__} - {e}"
-            with st.chat_message("assistant"):
-                st.markdown(response)
-            st.session_state.conversation.append({"role": "assistant", "content": response})
-
-        elif st.session_state.chat_mode == "RAG Mode":
-            if not st.session_state.vector_stores:
-                st.warning("Please upload at least one document for RAG Mode.")
-            else:
-                # Filter to get only the selected vector stores
-                selected_stores_for_query = {
-                    name: store for name, store in st.session_state.vector_stores.items()
-                    if st.session_state.selected_sources_dict.get(name, False)
-                }
-
-                if not selected_stores_for_query:
-                    st.info("No RAG source selected. Answering from general knowledge to demonstrate hallucination/errors.")
-                    with st.spinner("Thinking..."):
-                        try:
-                            # Define an async function to call the LLM directly
-                            async def get_llm_response(question):
-                                llm = ChatGoogleGenerativeAI(
-                                    model="gemini-2.5-flash",
-                                    temperature=0.7,
-                                    google_api_key=gemini_api_key,
-                                    convert_system_message_to_human=True,
-                                    request_timeout=60
-                                )
-                                response_obj = await llm.ainvoke(question)
-                                return response_obj.content
-                            # Run the async function
-                            response = asyncio.run(get_llm_response(user_question))
-                        except Exception as e:
-                            response = f"An error occurred: {type(e).__name__} - {e}"
-                    with st.chat_message("assistant"):
-                        st.markdown(response)
-                    st.session_state.conversation.append({"role": "assistant", "content": response})
-                else:
-                    # Generate and display AI response using RAG
-                    with st.spinner("Thinking with RAG..."):
-                        try:
-                            # Run the async RAG function
-                            response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, gemini_api_key))
-                        except Exception as e:
-                            response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
-                    with st.chat_message("assistant"):
-                        st.markdown(response)
-                    # Add AI response to chat history
-                    st.session_state.conversation.append({"role": "assistant", "content": response})
+        with st.spinner("Thinking with RAG..."):
+            try:
+                response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, "AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU"))
+            except Exception as e:
+                response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
+        with st.chat_message("assistant"):
+            st.markdown(response)
+        st.session_state.conversation.append({"role": "assistant", "content": response})
