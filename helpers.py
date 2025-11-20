@@ -50,9 +50,10 @@ def create_vector_store(text_chunks, api_key):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
-def generate_answer(user_question, vector_stores, api_key):
+async def generate_answer(user_question, vector_stores, api_key):
     """
     Generates an answer based on the user's question and selected vector stores.
+    This is an async function.
     Args:
         user_question (str): The user's question.
         vector_stores (dict): A dictionary of available vector stores, keyed by filename.
@@ -81,22 +82,23 @@ def generate_answer(user_question, vector_stores, api_key):
 
     # Initialize the model and the QA chain
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest",
+        model="gemini-2.0-flash", # Using user-specified model name
         temperature=0.3,
         google_api_key=api_key,
-        convert_system_message_to_human=True, # For compatibility
-        request_timeout=60 # Add a 60-second timeout
+        convert_system_message_to_human=True,
+        request_timeout=60
     )
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
     # Retrieve relevant documents from all selected vector stores
     all_docs = []
     for store in vector_stores.values():
+        # FAISS similarity_search is not async, so we run it normally
         all_docs.extend(store.similarity_search(user_question))
 
     if not all_docs:
         return "No relevant information found in the selected documents for your question."
 
-    # Generate the response
-    response = chain({"input_documents": all_docs, "question": user_question}, return_only_outputs=True)
+    # Generate the response asynchronously
+    response = await chain.ainvoke({"input_documents": all_docs, "question": user_question}, return_only_outputs=True)
     return response["output_text"]

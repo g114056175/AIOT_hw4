@@ -2,6 +2,7 @@ import streamlit as st
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
 import nest_asyncio
+import asyncio
 
 # Apply the patch for asyncio
 nest_asyncio.apply()
@@ -83,15 +84,21 @@ if user_question := st.chat_input("Ask a question..."):
         elif st.session_state.chat_mode == "Direct LLM Chat Mode":
             with st.spinner("Thinking..."):
                 try:
-                    llm = ChatGoogleGenerativeAI(
-                        model="gemini-1.5-flash-latest",
-                        temperature=0.7,
-                        google_api_key=gemini_api_key,
-                        convert_system_message_to_human=True, # For compatibility
-                        request_timeout=60 # Add a 60-second timeout
-                    )
-                    response_obj = llm.invoke(user_question)
-                    response = response_obj.content
+                    # Define an async function to call the LLM
+                    async def get_llm_response(question):
+                        llm = ChatGoogleGenerativeAI(
+                            model="gemini-2.0-flash", # Using user-specified model name
+                            temperature=0.7,
+                            google_api_key=gemini_api_key,
+                            convert_system_message_to_human=True,
+                            request_timeout=60
+                        )
+                        response_obj = await llm.ainvoke(question)
+                        return response_obj.content
+
+                    # Run the async function
+                    response = asyncio.run(get_llm_response(user_question))
+
                 except Exception as e:
                     response = f"An error occurred: {type(e).__name__} - {e}"
             with st.chat_message("assistant"):
@@ -114,9 +121,10 @@ if user_question := st.chat_input("Ask a question..."):
                     # Generate and display AI response
                     with st.spinner("Thinking..."):
                         try:
-                            response = helpers.generate_answer(user_question, selected_stores_for_query, gemini_api_key)
+                            # Run the async RAG function
+                            response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, gemini_api_key))
                         except Exception as e:
-                            response = f"Error during RAG processing: {e}"
+                            response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
                     with st.chat_message("assistant"):
                         st.markdown(response)
                     # Add AI response to chat history
