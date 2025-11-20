@@ -27,6 +27,21 @@ def process_text_from_pdfs(pdf_docs):
                 text += page_text
     return text
 
+def get_text_chunks(text):
+    """
+    Splits a long text into smaller, manageable chunks.
+    Args:
+        text (str): The input text.
+    Returns:
+        list: A list of text chunks.
+    """
+    if not text or not isinstance(text, str): # Add check for empty or non-string input
+        print("Warning: Input text for get_text_chunks is empty or not a string. Returning empty list.")
+        return []
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = text_splitter.split_text(text)
+    return chunks
+
 def get_hf_embeddings():
     """Initializes and returns the HuggingFace embedding model."""
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
