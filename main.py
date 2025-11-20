@@ -87,7 +87,7 @@ if user_question := st.chat_input("Ask a question..."):
                     # Define an async function to call the LLM
                     async def get_llm_response(question):
                         llm = ChatGoogleGenerativeAI(
-                            model="gemini-2.0-flash", # Using user-specified model name
+                        model="gemini-2.5-flash", # Updated model name as per user's correction
                             temperature=0.7,
                             google_api_key=gemini_api_key,
                             convert_system_message_to_human=True,

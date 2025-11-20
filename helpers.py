@@ -82,7 +82,7 @@ async def generate_answer(user_question, vector_stores, api_key):
 
     # Initialize the model and the QA chain
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", # Using user-specified model name
+        model="gemini-2.5-flash", # Updated model name as per user's correction
         temperature=0.3,
         google_api_key=api_key,
         convert_system_message_to_human=True,
