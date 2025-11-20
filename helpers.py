@@ -74,11 +74,9 @@ async def generate_answer(user_question, vector_stores, api_key):
     if not vector_stores:
         return "Please upload and select at least one document to ask questions."
 
-    # Define the prompt template with strict instructions
+    # A more basic and versatile prompt template
     prompt_template = """
-    You are a helpful assistant. Answer the user's question based ONLY on the following context.
-    Do not use any external knowledge or web search.
-    If the answer is not found in the context, state that you cannot find the answer in the provided documents.
+    Answer the user's question based on the provided context.
 
     Context:
     {context}
@@ -92,7 +90,7 @@ async def generate_answer(user_question, vector_stores, api_key):
 
     # Initialize the model and the QA chain
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", # Updated model name as per user's correction
+        model="gemini-2.5-flash-image", # Updated model name as per user's request
         temperature=0.3,
         google_api_key=api_key,
         convert_system_message_to_human=True,
