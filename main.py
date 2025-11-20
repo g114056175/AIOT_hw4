@@ -46,7 +46,7 @@ with st.sidebar:
                     if uploaded_file.name not in st.session_state.vector_stores:
                         raw_text = helpers.process_text_from_pdfs([uploaded_file])
                         text_chunks = helpers.get_text_chunks(raw_text)
-                        vector_store = helpers.create_vector_store(text_chunks, gemini_api_key)
+                        vector_store = helpers.create_vector_store(text_chunks)
                         if vector_store:
                             st.session_state.vector_stores[uploaded_file.name] = vector_store
                             st.success(f"Processed and indexed: {uploaded_file.name}")

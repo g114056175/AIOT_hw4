@@ -1,10 +1,11 @@
 import os
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI # Keep ChatGoogleGenerativeAI for generate_answer function
 
 def process_text_from_pdfs(pdf_docs):
     """
@@ -35,12 +36,11 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-def create_vector_store(text_chunks, api_key):
+def create_vector_store(text_chunks):
     """
-    Creates and returns a FAISS vector store from text chunks.
+    Creates and returns a FAISS vector store from text chunks using a HuggingFace model.
     Args:
         text_chunks (list): A list of text chunks.
-        api_key (str): The Google Gemini API key.
     Returns:
         FAISS: A FAISS vector store object, or None if input is empty.
     """
@@ -49,8 +49,8 @@ def create_vector_store(text_chunks, api_key):
         print("Warning: Text chunks are empty. Cannot create vector store.")
         return None
 
-    # Use the latest embedding model
-    embeddings = GoogleGenerativeAIEmbeddings(model="text-embedding-004", google_api_key=api_key)
+    # Use a HuggingFace model for embeddings, running locally on the server
+    embeddings = HuggingFaceEmbeddings(model_name="google/embeddinggemma-300m")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
