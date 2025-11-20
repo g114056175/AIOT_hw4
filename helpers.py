@@ -74,9 +74,9 @@ async def generate_answer(user_question, vector_stores, api_key):
     if not vector_stores:
         return "Please upload and select at least one document to ask questions."
 
-    # A more basic and versatile prompt template
+    # A more basic and versatile prompt template, asking for Traditional Chinese
     prompt_template = """
-    Answer the user's question based on the provided context.
+    Answer the user's question based on the provided context. Please respond in Traditional Chinese.
 
     Context:
     {context}
@@ -90,7 +90,7 @@ async def generate_answer(user_question, vector_stores, api_key):
 
     # Initialize the model and the QA chain
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", # Updated model name as per user's request
+        model="gemini-2.0-flash-lite", # Updated model name
         temperature=0.3,
         google_api_key=api_key,
         convert_system_message_to_human=True,

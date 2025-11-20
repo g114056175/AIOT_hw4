@@ -146,13 +146,15 @@ if user_question := st.chat_input("Ask a question..."):
             try:
                 # Use a direct synchronous call which is more stable in Streamlit
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
+                    model="gemini-2.0-flash-lite",
                     temperature=0.7,
                     google_api_key=google_api_key,
                     convert_system_message_to_human=True,
                     request_timeout=120
                 )
-                response_obj = llm.invoke(user_question)
+                # Add instruction for Traditional Chinese response
+                prompted_question = f"{user_question}\n\nPlease respond in Traditional Chinese."
+                response_obj = llm.invoke(prompted_question)
                 response = response_obj.content
             except Exception as e:
                 response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
