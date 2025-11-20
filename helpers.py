@@ -7,6 +7,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.prompts import PromptTemplate
 
 def get_hf_embeddings():
     """Initializes and returns the HuggingFace embedding model."""
