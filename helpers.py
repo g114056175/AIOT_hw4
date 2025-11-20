@@ -8,6 +8,24 @@ from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
+import io # Added import for io
+
+def process_text_from_pdfs(pdf_docs):
+    """
+    Extracts and concatenates text from a list of uploaded PDF files.
+    Args:
+        pdf_docs (list): A list of uploaded file objects from Streamlit.
+    Returns:
+        str: A single string containing all the extracted text.
+    """
+    text = ""
+    for pdf in pdf_docs:
+        pdf_reader = PdfReader(io.BytesIO(pdf.read())) # Modified line
+        for page in pdf_reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text
+    return text
 
 def get_hf_embeddings():
     """Initializes and returns the HuggingFace embedding model."""
