@@ -36,12 +36,12 @@ Here are a few examples to illustrate how the RAG system works with different ty
 
 1.  **Querying a Specific Document (Default RAG Source)**:
     -   Ensure the default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` is loaded and checked in the sidebar.
-    -   Ask the question: `Explain, according to Article 3 of the NCHU Student Rewards and Punishments Regulations, what are the behaviors for which students are given commendations?`
+    -   Ask the question: `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
     -   **Demonstrates**: How RAG can precisely answer questions by retrieving information from a specific, pre-loaded document.
 
 2.  **Querying General Knowledge (User-Uploaded RAG Source)**:
     -   First, upload a PDF document containing information about "Mitral Valve Prolapse" (e.g., a medical article or textbook chapter) and ensure its checkbox is selected in the sidebar.
-    -   Ask the question: `Based on RAG data, fully explain what are the symptoms of Mitral Valve Prolapse?`
+    -   Ask the question: `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
     -   **Demonstrates**: How RAG can be used with user-provided, domain-specific documents to answer questions that might not be covered by the LLM's general training data or require up-to-date information.
 
 These examples highlight RAG's ability to provide accurate, context-aware answers from both pre-loaded and dynamically uploaded knowledge sources.
