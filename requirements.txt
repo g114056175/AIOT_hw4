@@ -4,3 +4,4 @@ google-generativeai
 pypdf
 faiss-cpu
 langchain-google-genai
+langchain_text_splitters
