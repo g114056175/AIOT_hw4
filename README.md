@@ -1,7 +1,7 @@
 # AIOT HW4 - RAG Q&A System
 
 ## Project Summary & Process
-(To be filled in by me)
+本次作業是基於蔡炎龍教授的「檢索增強生成(RAG)的原理及實作」影片課程與Colab實作範例完成。我們使用Gemini API作為大型語言模型(LLM)，並透過以下步驟將PDF資料處理為RAG檢索向量檔案：首先，使用`pypdf`工具提取PDF文本內容；接著，利用`RecursiveCharacterTextSplitter`將文本分割成適當的文本塊；最後，運用`HuggingFaceEmbeddings`模型（`all-MiniLM-L6-v2`）生成文本嵌入向量，並建立`FAISS`向量資料庫。本專案旨在Streamlit平台上展示RAG技術的實際應用效果，同時深入探討其優勢、劣勢與在當前LLM發展趨勢下的必要性。
 
 ---
 
@@ -30,21 +30,9 @@ You can interact with the application deployed on Streamlit Cloud via the follow
 
 [https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/](https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/)
 
-### Example Usage: Demonstrating RAG's Capabilities
-
-Here are a few examples to illustrate how the RAG system works with different types of queries and data.
-
-1.  **Querying a Specific Document (Default RAG Source)**:
-    -   Ensure the default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` is loaded and checked in the sidebar.
-    -   Ask the question: `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
-    -   **Demonstrates**: How RAG can precisely answer questions by retrieving information from a specific, pre-loaded document.
-
-2.  **Querying General Knowledge (User-Uploaded RAG Source)**:
-    -   First, upload a PDF document containing information about "Mitral Valve Prolapse" (e.g., a medical article or textbook chapter) and ensure its checkbox is selected in the sidebar.
-    -   Ask the question: `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
-    -   **Demonstrates**: How RAG can be used with user-provided, domain-specific documents to answer questions that might not be covered by the LLM's general training data or require up-to-date information.
-
-These examples highlight RAG's ability to provide accurate, context-aware answers from both pre-loaded and dynamically uploaded knowledge sources.
+### Example Prompt:
+    `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
+    `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
 
 ## References
 
