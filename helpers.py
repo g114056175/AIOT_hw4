@@ -49,8 +49,8 @@ def create_vector_store(text_chunks):
         print("Warning: Text chunks are empty. Cannot create vector store.")
         return None
 
-    # Use a HuggingFace model for embeddings, running locally on the server
-    embeddings = HuggingFaceEmbeddings(model_name="google/embeddinggemma-300m")
+    # Use a lightweight HuggingFace model for embeddings to avoid resource issues on Streamlit Cloud
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
