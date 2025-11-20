@@ -30,9 +30,15 @@ You can interact with the application deployed on Streamlit Cloud via the follow
 
 [https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/](https://aiothw4-884u3yufyrjytbb2fya242.streamlit.app/)
 
-### Example Prompt:
-    `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
-    `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
+### DEMO1: Querying a Specific Document (Default RAG Source)
+-   **Scenario**: Demonstrates how RAG can precisely answer questions by retrieving information from a specific, pre-loaded document.
+-   **Action**: Ensure the default knowledge base `國立中興大學學生獎懲辦法.pdf_faiss_index (Default)` is loaded and checked in the sidebar.
+-   **Question**: `"說明根據 國立中興大學學生獎懲辦法 第三條 學生有下列各條情形之一者，予以記嘉獎 的行為有哪些?"`
+
+### DEMO2: Querying General Knowledge (User-Uploaded RAG Source)
+-   **Scenario**: Demonstrates how RAG can be used with user-provided, domain-specific documents to answer questions that might not be covered by the LLM's general training data or require up-to-date information.
+-   **Action**: First, upload a PDF document containing information about "Mitral Valve Prolapse" (e.g., a medical article or textbook chapter) and ensure its checkbox is selected in the sidebar.
+-   **Question**: `"根據RAG資料 完整的說明What are the symptoms of Mitral Valve Prolapse ?"`
 
 ## References
 
