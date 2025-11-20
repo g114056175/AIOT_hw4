@@ -45,6 +45,16 @@ if "default_loaded" not in st.session_state:
 
 # --- Sidebar for Controls ---
 with st.sidebar:
+    st.header("API Key Configuration")
+    google_api_key = st.text_input(
+        "Enter your Google API Key:",
+        value="AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU", # Default value as requested
+        type="password" # Use password type for security
+    )
+    if not google_api_key:
+        st.warning("Please enter your Google API Key to proceed.")
+        st.stop()
+
     st.header("RAG Document Management")
     
     uploaded_files = st.file_uploader("Upload new PDF documents", type="pdf", accept_multiple_files=True)
@@ -62,16 +72,6 @@ with st.sidebar:
                     else:
                         st.warning(f"Could not process text from: {uploaded_file.name}")
 
-    st.subheader("Google API Key Configuration")
-    google_api_key = st.text_input(
-        "Enter your Google API Key:",
-        value="AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU", # Default value as requested
-        type="password" # Use password type for security
-    )
-    if not google_api_key:
-        st.warning("Please enter your Google API Key to proceed.")
-        st.stop()
-    
     st.subheader("Available RAG Sources")
     if not st.session_state.vector_stores:
         st.info("Upload a document or add a default RAG folder to begin.")
