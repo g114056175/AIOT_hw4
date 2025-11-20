@@ -74,34 +74,19 @@ async def generate_answer(user_question, vector_stores, api_key):
     if not vector_stores:
         return "Please upload and select at least one document to ask questions."
 
-    # Prompt for the MAP step
-    question_prompt_template = """
-    Use the following portion of a long document to see if any parts of it are relevant to answer the question.
-    Return any relevant text verbatim.
-    ---
-    {context}
-    ---
-    Question: {question}
-    Relevant text, if any:
-    """
-    QUESTION_PROMPT = PromptTemplate(
-        template=question_prompt_template, input_variables=["context", "question"]
-    )
+    # A more basic and versatile prompt template
+    prompt_template = """
+    Answer the user's question based on the provided context.
 
-    # Prompt for the COMBINE step
-    combine_prompt_template = """
-    Given the following extracted parts from a long document and a question, create a final answer.
-    If you don't know the answer, just say that you don't know. Don't try to make up an answer.
-    ---
-    QUESTION: {question}
-    ---
-    {summaries}
-    ---
-    FINAL ANSWER:
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer:
     """
-    COMBINE_PROMPT = PromptTemplate(
-        template=combine_prompt_template, input_variables=["summaries", "question"]
-    )
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
     # Initialize the model and the QA chain
     model = ChatGoogleGenerativeAI(
@@ -109,14 +94,9 @@ async def generate_answer(user_question, vector_stores, api_key):
         temperature=0.3,
         google_api_key=api_key,
         convert_system_message_to_human=True,
-        request_timeout=120
+        request_timeout=60
     )
-    chain = load_qa_chain(
-        model,
-        chain_type="map_reduce",
-        question_prompt=QUESTION_PROMPT,
-        combine_prompt=COMBINE_PROMPT
-    )
+    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
     # Retrieve relevant documents from all selected vector stores
     all_docs = []

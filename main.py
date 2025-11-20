@@ -144,20 +144,16 @@ if user_question := st.chat_input("Ask a question..."):
         st.info("No RAG source selected. Answering from general knowledge...")
         with st.spinner("Thinking..."):
             try:
-                # Define an async function to call the LLM
-                async def get_llm_response(question):
-                    llm = ChatGoogleGenerativeAI(
-                        model="gemini-2.5-flash-image", # Use the specified model
-                        temperature=0.7,
-                        google_api_key=google_api_key,
-                        convert_system_message_to_human=True,
-                        request_timeout=120
-                    )
-                    response_obj = await llm.ainvoke(question)
-                    return response_obj.content
-                
-                # Run the async function
-                response = asyncio.run(get_llm_response(user_question))
+                # Use a direct synchronous call which is more stable in Streamlit
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-flash-image",
+                    temperature=0.7,
+                    google_api_key=google_api_key,
+                    convert_system_message_to_human=True,
+                    request_timeout=120
+                )
+                response_obj = llm.invoke(user_question)
+                response = response_obj.content
             except Exception as e:
                 response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
         
