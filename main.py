@@ -62,6 +62,16 @@ with st.sidebar:
                     else:
                         st.warning(f"Could not process text from: {uploaded_file.name}")
 
+    st.subheader("Google API Key Configuration")
+    google_api_key = st.text_input(
+        "Enter your Google API Key:",
+        value="AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU", # Default value as requested
+        type="password" # Use password type for security
+    )
+    if not google_api_key:
+        st.warning("Please enter your Google API Key to proceed.")
+        st.stop()
+    
     st.subheader("Available RAG Sources")
     if not st.session_state.vector_stores:
         st.info("Upload a document or add a default RAG folder to begin.")
@@ -139,7 +149,7 @@ if user_question := st.chat_input("Ask a question..."):
                     llm = ChatGoogleGenerativeAI(
                         model="gemini-2.5-flash-image", # Use the specified model
                         temperature=0.7,
-                        google_api_key=st.secrets["GOOGLE_API_KEY"],
+                        google_api_key=google_api_key,
                         convert_system_message_to_human=True,
                         request_timeout=120
                     )
@@ -160,7 +170,7 @@ if user_question := st.chat_input("Ask a question..."):
         with st.spinner("Thinking with RAG..."):
             try:
                 # Pass the selected vector stores to the helper function
-                response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, st.secrets["GOOGLE_API_KEY"]))
+                response = asyncio.run(helpers.generate_answer(user_question, selected_stores_for_query, google_api_key))
             except Exception as e:
                 response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
         
