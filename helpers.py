@@ -53,26 +53,19 @@ def generate_answer(user_question, vector_stores, api_key, chat_history):
     )
 
     # --- Combine all selected vector stores into a single retriever ---
-    # Create a list of all documents from all selected vector stores
-    all_retrieved_docs = []
-    for store in vector_stores.values():
-        # Perform a similarity search on each store to get its documents
-        # This is a workaround as FAISS.merge_from requires an existing index
-        # and we need to combine documents for a single retriever.
-        # For simplicity, we'll just get all documents and create a new FAISS from them.
-        # A more efficient approach for very large numbers of documents would be to
-        # merge the FAISS indexes directly if possible, or use a custom multi-store retriever.
-        all_retrieved_docs.extend(store.similarity_search(user_question, k=5)) # k=5 is arbitrary, can be tuned
+    if not vector_stores:
+        return "No RAG source selected."
 
-    if not all_retrieved_docs:
-        return "No relevant information found in the selected documents for your question."
+    # Take the first selected store as the base for merging
+    base_store_key = list(vector_stores.keys())[0]
+    base_store = vector_stores[base_store_key]
 
-    # Create a temporary FAISS store from the combined documents to act as a single retriever
-    # This ensures all selected sources contribute to the retrieval.
-    # Note: This re-embeds documents, which is not ideal for performance but ensures correctness.
-    # A better approach would be to merge the FAISS indexes directly if possible.
-    temp_faiss_store = FAISS.from_documents(all_retrieved_docs, get_hf_embeddings())
-    retriever = temp_faiss_store.as_retriever()
+    # Merge other selected stores into the base store
+    for key, store in vector_stores.items():
+        if key != base_store_key:
+            base_store.merge_from(store)
+    
+    retriever = base_store.as_retriever()
 
     # Create a memory object to hold the conversation history
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
