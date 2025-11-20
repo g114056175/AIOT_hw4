@@ -81,7 +81,7 @@ if user_question := st.chat_input("Ask a question..."):
     if not gemini_api_key:
         st.warning("Please enter your Gemini API Key in the sidebar.")
     else:
-        elif st.session_state.chat_mode == "Direct LLM Chat Mode":
+        if st.session_state.chat_mode == "Direct LLM Chat Mode":
             with st.spinner("Thinking..."):
                 try:
                     # Define an async function to call the LLM
