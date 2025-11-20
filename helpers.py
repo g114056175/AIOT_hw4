@@ -80,7 +80,13 @@ def generate_answer(user_question, vector_stores, api_key):
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
     # Initialize the model and the QA chain
-    model = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", temperature=0.3, google_api_key=api_key)
+    model = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash-latest",
+        temperature=0.3,
+        google_api_key=api_key,
+        convert_system_message_to_human=True, # For compatibility
+        request_timeout=60 # Add a 60-second timeout
+    )
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
     # Retrieve relevant documents from all selected vector stores

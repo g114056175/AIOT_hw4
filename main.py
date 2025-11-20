@@ -80,14 +80,20 @@ if user_question := st.chat_input("Ask a question..."):
     if not gemini_api_key:
         st.warning("Please enter your Gemini API Key in the sidebar.")
     else:
-        if st.session_state.chat_mode == "Direct LLM Chat Mode":
+        elif st.session_state.chat_mode == "Direct LLM Chat Mode":
             with st.spinner("Thinking..."):
                 try:
-                    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7, google_api_key=gemini_api_key)
+                    llm = ChatGoogleGenerativeAI(
+                        model="gemini-1.5-flash-latest",
+                        temperature=0.7,
+                        google_api_key=gemini_api_key,
+                        convert_system_message_to_human=True, # For compatibility
+                        request_timeout=60 # Add a 60-second timeout
+                    )
                     response_obj = llm.invoke(user_question)
                     response = response_obj.content
                 except Exception as e:
-                    response = f"Error communicating with Gemini LLM: {e}"
+                    response = f"An error occurred: {type(e).__name__} - {e}"
             with st.chat_message("assistant"):
                 st.markdown(response)
             st.session_state.conversation.append({"role": "assistant", "content": response})
