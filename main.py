@@ -130,7 +130,7 @@ if user_question := st.chat_input("Ask a question..."):
     # Determine which vector stores are selected for the query
     selected_stores_for_query = {
         name: store for name, store in st.session_state.vector_stores.items()
-        if st.session_state.selected_sources_dict.get(name, False)
+        if st.session_state.selected_sources_dict.get(name, True)
     }
 
     # --- Query Logic ---
