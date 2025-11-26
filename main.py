@@ -132,8 +132,9 @@ for message in st.session_state.conversation:
         st.markdown(message["content"])
 
 if user_question := st.chat_input("Ask a question..."):
-    # Append user message and immediately rerun to update the display
     st.session_state.conversation.append({"role": "user", "content": user_question})
+    with st.chat_message("user"):
+        st.markdown(user_question)
 
     # Determine which vector stores are selected for the query
     selected_stores_for_query = {
@@ -141,10 +142,11 @@ if user_question := st.chat_input("Ask a question..."):
         if st.session_state.selected_sources_dict.get(name, True)
     }
 
-    # --- Query Logic within a spinner ---
-    with st.spinner("Thinking..."):
-        if not selected_stores_for_query:
-            # Fallback to direct LLM
+    # --- Query Logic ---
+    if not selected_stores_for_query:
+        # Fallback to direct LLM if no RAG source is selected
+        st.info("No RAG source selected. Answering from general knowledge...")
+        with st.spinner("Thinking..."):
             try:
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-2.0-flash-lite",
@@ -153,30 +155,33 @@ if user_question := st.chat_input("Ask a question..."):
                     convert_system_message_to_human=True,
                     request_timeout=120
                 )
+                
                 response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
-                response_content = response_obj.content
-                # Prepare metadata for non-RAG response
-                assistant_response = {"role": "assistant", "content": response_content, "rag_used": False}
+                response = response_obj.content
             except Exception as e:
-                response_content = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
-                assistant_response = {"role": "assistant", "content": response_content, "rag_used": False}
-        else:
-            # Use RAG to generate an answer
+                response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
+        
+        with st.chat_message("assistant"):
+            st.caption("Source: General Knowledge")
+            st.markdown(response)
+        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": False})
+
+    else:
+        # Use RAG to generate an answer
+        with st.spinner("Thinking with RAG..."):
             try:
-                response_content = helpers.generate_answer(
+                # Call the helper function with the original question
+                response = helpers.generate_answer(
                     user_question,
                     selected_stores_for_query,
                     google_api_key
                 )
-                # Prepare metadata for RAG response
-                source_names = list(selected_stores_for_query.keys())
-                assistant_response = {"role": "assistant", "content": response_content, "rag_used": True, "sources": source_names}
             except Exception as e:
-                response_content = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
-                assistant_response = {"role": "assistant", "content": response_content, "rag_used": True, "sources": ["Error"]}
-
-    # Append the complete assistant response
-    st.session_state.conversation.append(assistant_response)
-    
-    # Rerun the script to display the latest messages from the history
-    st.rerun()
+                response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
+        
+        with st.chat_message("assistant"):
+            source_names = list(selected_stores_for_query.keys())
+            formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
+            st.caption(f"Source(s): {', '.join(formatted_sources)}")
+            st.markdown(response)
+        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": True, "sources": source_names})
