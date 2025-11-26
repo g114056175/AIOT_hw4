@@ -120,6 +120,15 @@ with st.sidebar:
 # --- Main Chat Interface ---
 for message in st.session_state.conversation:
     with st.chat_message(message["role"]):
+        # Check for assistant messages with metadata to display the source
+        if message["role"] == "assistant":
+            if message.get("rag_used") == False:
+                st.caption("Source: General Knowledge")
+            elif message.get("rag_used") == True and "sources" in message:
+                # Format source names for readability
+                formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in message.get("sources", [])]
+                st.caption(f"Source(s): {', '.join(formatted_sources)}")
+
         st.markdown(message["content"])
 
 if user_question := st.chat_input("Ask a question..."):
@@ -147,18 +156,18 @@ if user_question := st.chat_input("Ask a question..."):
                     request_timeout=120
                 )
                 
-                # Send only the current question to the LLM, with Traditional Chinese instruction
                 response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
                 response = response_obj.content
             except Exception as e:
                 response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
         
         with st.chat_message("assistant"):
+            st.caption("Source: General Knowledge")
             st.markdown(response)
-        st.session_state.conversation.append({"role": "assistant", "content": response})
+        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": False})
 
     else:
-        # Use RAG to generate an answer (stateless)
+        # Use RAG to generate an answer
         with st.spinner("Thinking with RAG..."):
             try:
                 # Call the helper function with the original question
@@ -171,5 +180,8 @@ if user_question := st.chat_input("Ask a question..."):
                 response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
         
         with st.chat_message("assistant"):
+            source_names = list(selected_stores_for_query.keys())
+            formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
+            st.caption(f"Source(s): {', '.join(formatted_sources)}")
             st.markdown(response)
-        st.session_state.conversation.append({"role": "assistant", "content": response})
+        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": True, "sources": source_names})
