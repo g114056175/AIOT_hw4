@@ -52,7 +52,7 @@ if "default_loaded" not in st.session_state:
         try:
             with st.spinner("Loading default RAG sources..."):
                 embeddings = helpers.get_hf_embeddings()
-                for item in os.listdir(DEFAULT_RAG_ROOT):
+                for item in sorted(os.listdir(DEFAULT_RAG_ROOT), reverse=True):
                     item_path = os.path.join(DEFAULT_RAG_ROOT, item)
                     # Check if it's a directory and not already loaded
                     if os.path.isdir(item_path) and f"{item} (Default)" not in st.session_state.vector_stores:
