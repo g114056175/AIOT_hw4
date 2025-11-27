@@ -171,52 +171,52 @@ if user_question := st.chat_input("Ask a question..."):
             if st.session_state.selected_sources_dict.get(name, True)
         }
 
-        # --- Query Logic ---
-        if not selected_stores_for_query:
-            # Fallback to direct LLM if no RAG source is selected
-            st.info("未選取 RAG 文件，使用 LLM 內部知識回答。")
-            with st.spinner("Thinking..."):
+        # --- Refactored Query Logic with st.status ---
+        with st.chat_message("assistant"):
+            rag_used = bool(selected_stores_for_query)
+            status_message = "正在透過 RAG 思考..." if rag_used else "正在思考..."
+            
+            with st.status(status_message, expanded=False) as status:
                 try:
-                    # Use a stable chain pattern similar to the RAG path
-                    llm = ChatGoogleGenerativeAI(
-                        model="gemini-2.0-flash-lite", # Corrected model name to match working RAG path
-                        temperature=0.7,
-                        google_api_key=google_api_key,
-                        convert_system_message_to_human=True,
-                        request_timeout=120
-                    )
-                    
-                    # Create a simple prompt and chain for direct queries
-                    prompt_template = "Question: {question}\n\nAnswer in Traditional Chinese:"
-                    prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
-                    llm_chain = LLMChain(prompt=prompt, llm=llm)
-                    
-                    response = llm_chain.run(question=user_question)
+                    if not rag_used:
+                        # Fallback to direct LLM
+                        st.info("未選取 RAG 文件，使用 LLM 內部知識回答。")
+                        llm = ChatGoogleGenerativeAI(
+                            model="gemini-2.0-flash-lite",
+                            temperature=0.7,
+                            google_api_key=google_api_key,
+                            convert_system_message_to_human=True,
+                            request_timeout=120
+                        )
+                        prompt_template = "Question: {question}\n\nAnswer in Traditional Chinese:"
+                        prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
+                        llm_chain = LLMChain(prompt=prompt, llm=llm)
+                        response = llm_chain.run(question=user_question)
+                        source_names = []
+                    else:
+                        # Use RAG to generate an answer
+                        response = helpers.generate_answer(
+                            user_question,
+                            selected_stores_for_query,
+                            google_api_key
+                        )
+                        source_names = list(selected_stores_for_query.keys())
+
+                    status.update(label="回答已產生！", state="complete", expanded=False)
 
                 except Exception as e:
-                    response = f"呼叫 LLM 時發生錯誤： {type(e).__name__} - {e}"
+                    response = f"處理過程中發生錯誤： {type(e).__name__} - {e}"
+                    st.error(response)
+                    st.session_state.conversation.append({"role": "assistant", "content": response, "is_error": True})
+                    status.update(label="處理失敗", state="error", expanded=True)
             
-            with st.chat_message("assistant"):
-                st.caption("Source: General Knowledge")
+            # Display the final response and caption
+            if "is_error" not in st.session_state.conversation[-1]:
+                if not rag_used:
+                    st.caption("資料來源: 通用知識")
+                else:
+                    formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
+                    st.caption(f"資料來源: {', '.join(formatted_sources)}")
+                
                 st.markdown(response)
-            st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": False})
-
-        else:
-            # Use RAG to generate an answer
-            with st.spinner("Thinking with RAG..."):
-                try:
-                    # Call the helper function with the original question
-                    response = helpers.generate_answer(
-                        user_question,
-                        selected_stores_for_query,
-                        google_api_key
-                    )
-                except Exception as e:
-                    response = f"RAG 處理過程中發生錯誤： {type(e).__name__} - {e}"
-            
-            with st.chat_message("assistant"):
-                source_names = list(selected_stores_for_query.keys())
-                formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
-                st.caption(f"Source(s): {', '.join(formatted_sources)}")
-                st.markdown(response)
-            st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": True, "sources": source_names})
+                st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": rag_used, "sources": source_names})
