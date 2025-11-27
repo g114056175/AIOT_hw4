@@ -82,6 +82,12 @@ with st.sidebar:
     # The actual check for presence will happen when a query is made.
     google_api_key = user_api_key or os.getenv("GOOGLE_API_KEY")
 
+    # --- Temporary Debugging ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"**除錯資訊:** 偵測到 `GOOGLE_API_KEY` 變數: **{os.getenv('GOOGLE_API_KEY') is not None}**")
+    st.sidebar.markdown("---")
+    # --- End Temporary Debugging ---
+
     # Display a status message based on which key is being used, without stopping the app
     if user_api_key:
         st.success("已偵測到您輸入的 API 金鑰。")
