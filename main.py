@@ -38,7 +38,7 @@ def get_zip_file_bytes(vector_store, filename):
     return zip_buffer.getvalue()
 
 # --- App & Version Configuration ---
-APP_VERSION = "v1.1 (Debug)"
+APP_VERSION = "v1.2"
 st.set_page_config(page_title="RAG Q&A with Gemini", layout="wide")
 st.title("📄 RAG-based Q&A with Gemini")
 
@@ -71,32 +71,32 @@ if "default_loaded" not in st.session_state:
 
 # --- Sidebar for Controls ---
 with st.sidebar:
-    st.header("API Key Configuration")
+    st.header("API 金鑰設定")
+    
     user_api_key = st.text_input(
-        "Enter your Google API Key (Optional):",
-        placeholder="您的 Google API 金鑰",
-        help="如果未填入金鑰，應用程式將嘗試使用環境變數中設定的預設金鑰。",
+        label="Google API 金鑰 (選填)",
+        placeholder="貼上您的金鑰以覆蓋預設值",
+        help="如果留空，將自動使用應用程式內建的預設金鑰。",
         type="password"
     )
 
     google_api_key = user_api_key or os.getenv("GOOGLE_API_KEY")
+    default_key_found = os.getenv("GOOGLE_API_KEY") is not None
 
-    # --- Status Box ---
-    st.markdown("---")
-    st.markdown(f"**版本:** `{APP_VERSION}`")
-    key_found = os.getenv("GOOGLE_API_KEY") is not None
-    st.markdown(f"**偵測到預設金鑰:** {'✅' if key_found else '❌'}")
-    st.markdown("---")
-
-    # Display a status message based on which key is being used
+    # Display a single, consolidated status line
     if user_api_key:
-        st.success("已偵測到您輸入的 API 金鑰。")
-    elif google_api_key:
-        st.info("未偵測到輸入金鑰，將使用預設金鑰。")
+        st.caption("🟢 您正在使用自己輸入的金鑰。")
+    elif default_key_found:
+        st.caption("🔵 已自動載入預設金鑰。")
+    else:
+        st.caption("🔴 未找到任何金鑰，請手動輸入。")
     
-    st.header("RAG Document Management")
+    st.markdown(f"<div style='text-align: right; font-size: 0.8em;'>版本: {APP_VERSION}</div>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    uploaded_files = st.file_uploader("Upload new PDF documents", type="pdf", accept_multiple_files=True)
+    st.header("RAG 文件管理")
+    
+    uploaded_files = st.file_uploader("上傳新的 PDF 文件", type="pdf", accept_multiple_files=True)
 
     if uploaded_files:
         with st.spinner("Processing documents..."):
