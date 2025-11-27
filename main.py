@@ -1,14 +1,18 @@
 import streamlit as st
 import nest_asyncio
+import os
+from dotenv import load_dotenv
 
 # Apply the patch for asyncio right at the start
 nest_asyncio.apply()
+# Load environment variables from .env file for local development
+load_dotenv()
+
 
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 import asyncio
-import os
 import shutil
 from langchain.vectorstores import FAISS
 import io
@@ -67,15 +71,26 @@ if "default_loaded" not in st.session_state:
 # --- Sidebar for Controls ---
 with st.sidebar:
     st.header("API Key Configuration")
-    google_api_key = st.text_input(
-        "Enter your Google API Key:",
-        value="AIzaSyDYG6oTxQrHQxcx5T6ErtqC22sXSzqihmU", # Default value as requested
-        type="password" # Use password type for security
+    # First, try to get the key from user input
+    user_api_key = st.text_input(
+        "Enter your Google API Key (Optional):",
+        placeholder="您的 Google API 金鑰",
+        help="如果未填入金鑰，應用程式將嘗試使用環境變數中設定的預設金鑰。",
+        type="password"
     )
-    if not google_api_key:
-        st.warning("Please enter your Google API Key to proceed.")
-        st.stop()
 
+    # Fallback to environment variable if user doesn't provide a key
+    if user_api_key:
+        google_api_key = user_api_key
+        st.success("已使用您提供的 API 金鑰。")
+    else:
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if google_api_key:
+            st.info("未填入金鑰 (已使用預設金鑰)。")
+        else:
+            st.warning("請提供 Google API 金鑰，或將其設定為應用程式的 Secrets 以繼續。")
+            st.stop()
+    
     st.header("RAG Document Management")
     
     uploaded_files = st.file_uploader("Upload new PDF documents", type="pdf", accept_multiple_files=True)
