@@ -179,7 +179,7 @@ if user_question := st.chat_input("Ask a question..."):
                 try:
                     # Use a stable chain pattern similar to the RAG path
                     llm = ChatGoogleGenerativeAI(
-                        model="gemini-pro", # Standardizing model
+                        model="gemini-2.0-flash-lite", # Corrected model name to match working RAG path
                         temperature=0.7,
                         google_api_key=google_api_key,
                         convert_system_message_to_human=True,
