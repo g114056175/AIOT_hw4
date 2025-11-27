@@ -37,7 +37,8 @@ def get_zip_file_bytes(vector_store, filename):
     shutil.rmtree(TEMP_DIR) # Clean up after zipping
     return zip_buffer.getvalue()
 
-# --- App Configuration ---
+# --- App & Version Configuration ---
+APP_VERSION = "v1.1 (Debug)"
 st.set_page_config(page_title="RAG Q&A with Gemini", layout="wide")
 st.title("📄 RAG-based Q&A with Gemini")
 
@@ -78,22 +79,20 @@ with st.sidebar:
         type="password"
     )
 
-    # Determine which API key to use (user-provided or fallback from environment)
-    # The actual check for presence will happen when a query is made.
     google_api_key = user_api_key or os.getenv("GOOGLE_API_KEY")
 
-    # --- Temporary Debugging ---
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f"**除錯資訊:** 偵測到 `GOOGLE_API_KEY` 變數: **{os.getenv('GOOGLE_API_KEY') is not None}**")
-    st.sidebar.markdown("---")
-    # --- End Temporary Debugging ---
+    # --- Status Box ---
+    st.markdown("---")
+    st.markdown(f"**版本:** `{APP_VERSION}`")
+    key_found = os.getenv("GOOGLE_API_KEY") is not None
+    st.markdown(f"**偵測到預設金鑰:** {'✅' if key_found else '❌'}")
+    st.markdown("---")
 
-    # Display a status message based on which key is being used, without stopping the app
+    # Display a status message based on which key is being used
     if user_api_key:
         st.success("已偵測到您輸入的 API 金鑰。")
     elif google_api_key:
         st.info("未偵測到輸入金鑰，將使用預設金鑰。")
-    # No warning here to prevent clutter; the warning will appear in the chat if needed.
     
     st.header("RAG Document Management")
     
