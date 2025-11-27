@@ -71,7 +71,6 @@ if "default_loaded" not in st.session_state:
 # --- Sidebar for Controls ---
 with st.sidebar:
     st.header("API Key Configuration")
-    # First, try to get the key from user input
     user_api_key = st.text_input(
         "Enter your Google API Key (Optional):",
         placeholder="您的 Google API 金鑰",
@@ -79,17 +78,16 @@ with st.sidebar:
         type="password"
     )
 
-    # Fallback to environment variable if user doesn't provide a key
+    # Determine which API key to use (user-provided or fallback from environment)
+    # The actual check for presence will happen when a query is made.
+    google_api_key = user_api_key or os.getenv("GOOGLE_API_KEY")
+
+    # Display a status message based on which key is being used, without stopping the app
     if user_api_key:
-        google_api_key = user_api_key
-        st.success("已使用您提供的 API 金鑰。")
-    else:
-        google_api_key = os.getenv("GOOGLE_API_KEY")
-        if google_api_key:
-            st.info("未填入金鑰 (已使用預設金鑰)。")
-        else:
-            st.warning("請提供 Google API 金鑰，或將其設定為應用程式的 Secrets 以繼續。")
-            st.stop()
+        st.success("已偵測到您輸入的 API 金鑰。")
+    elif google_api_key:
+        st.info("未偵測到輸入金鑰，將使用預設金鑰。")
+    # No warning here to prevent clutter; the warning will appear in the chat if needed.
     
     st.header("RAG Document Management")
     
@@ -137,66 +135,78 @@ for message in st.session_state.conversation:
     with st.chat_message(message["role"]):
         # Check for assistant messages with metadata to display the source
         if message["role"] == "assistant":
-            if message.get("rag_used") == False:
-                st.caption("Source: General Knowledge")
-            elif message.get("rag_used") == True and "sources" in message:
-                # Format source names for readability
-                formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in message.get("sources", [])]
-                st.caption(f"Source(s): {', '.join(formatted_sources)}")
+            if "is_error" in message:
+                 st.error(message["content"])
+            else:
+                if message.get("rag_used") == False:
+                    st.caption("Source: General Knowledge")
+                elif message.get("rag_used") == True and "sources" in message:
+                    # Format source names for readability
+                    formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in message.get("sources", [])]
+                    st.caption(f"Source(s): {', '.join(formatted_sources)}")
+                st.markdown(message["content"])
+        else: # User messages
+             st.markdown(message["content"])
 
-        st.markdown(message["content"])
 
 if user_question := st.chat_input("Ask a question..."):
     st.session_state.conversation.append({"role": "user", "content": user_question})
     with st.chat_message("user"):
         st.markdown(user_question)
 
-    # Determine which vector stores are selected for the query
-    selected_stores_for_query = {
-        name: store for name, store in st.session_state.vector_stores.items()
-        if st.session_state.selected_sources_dict.get(name, True)
-    }
-
-    # --- Query Logic ---
-    if not selected_stores_for_query:
-        # Fallback to direct LLM if no RAG source is selected
-        st.info("No RAG source selected. Answering from general knowledge...")
-        with st.spinner("Thinking..."):
-            try:
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.0-flash-lite",
-                    temperature=0.7,
-                    google_api_key=google_api_key,
-                    convert_system_message_to_human=True,
-                    request_timeout=120
-                )
-                
-                response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
-                response = response_obj.content
-            except Exception as e:
-                response = f"An error occurred while contacting the LLM: {type(e).__name__} - {e}"
-        
+    # CRITICAL: Check for API key availability *before* making any calls
+    if not google_api_key:
+        error_message = "API 金鑰未設定。請在左側側邊欄輸入您的 Google API 金鑰，或由應用程式管理員設定預設金鑰。"
+        st.session_state.conversation.append({"role": "assistant", "content": error_message, "is_error": True})
         with st.chat_message("assistant"):
-            st.caption("Source: General Knowledge")
-            st.markdown(response)
-        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": False})
-
+            st.error(error_message)
     else:
-        # Use RAG to generate an answer
-        with st.spinner("Thinking with RAG..."):
-            try:
-                # Call the helper function with the original question
-                response = helpers.generate_answer(
-                    user_question,
-                    selected_stores_for_query,
-                    google_api_key
-                )
-            except Exception as e:
-                response = f"An error occurred during RAG processing: {type(e).__name__} - {e}"
-        
-        with st.chat_message("assistant"):
-            source_names = list(selected_stores_for_query.keys())
-            formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
-            st.caption(f"Source(s): {', '.join(formatted_sources)}")
-            st.markdown(response)
-        st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": True, "sources": source_names})
+        # Determine which vector stores are selected for the query
+        selected_stores_for_query = {
+            name: store for name, store in st.session_state.vector_stores.items()
+            if st.session_state.selected_sources_dict.get(name, True)
+        }
+
+        # --- Query Logic ---
+        if not selected_stores_for_query:
+            # Fallback to direct LLM if no RAG source is selected
+            st.info("No RAG source selected. Answering from general knowledge...")
+            with st.spinner("Thinking..."):
+                try:
+                    llm = ChatGoogleGenerativeAI(
+                        model="gemini-1.5-flash",
+                        temperature=0.7,
+                        google_api_key=google_api_key,
+                        convert_system_message_to_human=True,
+                        request_timeout=120
+                    )
+                    
+                    response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
+                    response = response_obj.content
+                except Exception as e:
+                    response = f"呼叫 LLM 時發生錯誤： {type(e).__name__} - {e}"
+            
+            with st.chat_message("assistant"):
+                st.caption("Source: General Knowledge")
+                st.markdown(response)
+            st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": False})
+
+        else:
+            # Use RAG to generate an answer
+            with st.spinner("Thinking with RAG..."):
+                try:
+                    # Call the helper function with the original question
+                    response = helpers.generate_answer(
+                        user_question,
+                        selected_stores_for_query,
+                        google_api_key
+                    )
+                except Exception as e:
+                    response = f"RAG 處理過程中發生錯誤： {type(e).__name__} - {e}"
+            
+            with st.chat_message("assistant"):
+                source_names = list(selected_stores_for_query.keys())
+                formatted_sources = [s.replace("_faiss_index (Default)", "").replace(".pdf", "") for s in source_names]
+                st.caption(f"Source(s): {', '.join(formatted_sources)}")
+                st.markdown(response)
+            st.session_state.conversation.append({"role": "assistant", "content": response, "rag_used": True, "sources": source_names})
