@@ -11,6 +11,8 @@ load_dotenv()
 
 import helpers
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 import asyncio
 import shutil
@@ -37,8 +39,6 @@ def get_zip_file_bytes(vector_store, filename):
     shutil.rmtree(TEMP_DIR) # Clean up after zipping
     return zip_buffer.getvalue()
 
-# --- App & Version Configuration ---
-APP_VERSION = "v1.2"
 st.set_page_config(page_title="RAG Q&A with Gemini", layout="wide")
 st.title("📄 RAG-based Q&A with Gemini")
 
@@ -91,7 +91,6 @@ with st.sidebar:
     else:
         st.caption("🔴 未找到任何金鑰，請手動輸入。")
     
-    st.markdown(f"<div style='text-align: right; font-size: 0.8em;'>版本: {APP_VERSION}</div>", unsafe_allow_html=True)
     st.markdown("---")
     
     st.header("RAG 文件管理")
@@ -175,19 +174,25 @@ if user_question := st.chat_input("Ask a question..."):
         # --- Query Logic ---
         if not selected_stores_for_query:
             # Fallback to direct LLM if no RAG source is selected
-            st.info("No RAG source selected. Answering from general knowledge...")
+            st.info("未選取 RAG 文件，使用 LLM 內部知識回答。")
             with st.spinner("Thinking..."):
                 try:
+                    # Use a stable chain pattern similar to the RAG path
                     llm = ChatGoogleGenerativeAI(
-                        model="gemini-1.5-flash",
+                        model="gemini-pro", # Standardizing model
                         temperature=0.7,
                         google_api_key=google_api_key,
                         convert_system_message_to_human=True,
                         request_timeout=120
                     )
                     
-                    response_obj = llm.invoke(f"{user_question}\n\nPlease respond in Traditional Chinese.")
-                    response = response_obj.content
+                    # Create a simple prompt and chain for direct queries
+                    prompt_template = "Question: {question}\n\nAnswer in Traditional Chinese:"
+                    prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
+                    llm_chain = LLMChain(prompt=prompt, llm=llm)
+                    
+                    response = llm_chain.run(question=user_question)
+
                 except Exception as e:
                     response = f"呼叫 LLM 時發生錯誤： {type(e).__name__} - {e}"
             
